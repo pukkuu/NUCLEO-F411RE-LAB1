@@ -21,7 +21,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "math.h"
+#include "string.h"
+#include "inttypes.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,6 +45,16 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
+struct GPIOState {
+	GPIO_PinState Current;
+	GPIO_PinState Previous;
+};
+
+struct GPIO_PortPin {
+	GPIO_TypeDef *Port;
+	uint16_t Pin;
+};
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -51,10 +63,49 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
+int8_t HAL_GPIO_ReadDigit();
+GPIO_PinState HAL_GPIO_CheckID(uint64_t CheckID);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+struct GPIO_PortPin L[4] = {
+		{L1_GPIO_Port, L1_Pin},
+		{L2_GPIO_Port, L2_Pin},
+		{L3_GPIO_Port, L3_Pin},
+		{L4_GPIO_Port, L4_Pin}
+};
+
+struct GPIO_PortPin R[4] = {
+		{R1_GPIO_Port, R1_Pin},
+		{R2_GPIO_Port, R2_Pin},
+		{R3_GPIO_Port, R3_Pin},
+		{R4_GPIO_Port, R4_Pin}
+};
+
+struct GPIOState S[16] = {
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET},
+		{GPIO_PIN_SET, GPIO_PIN_SET}
+};
+
+char TxBuffer[20];
+uint64_t ID = 0;
 
 /* USER CODE END 0 */
 
@@ -93,8 +144,17 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+  uint32_t TimeStamp = HAL_GetTick() + 20;
+
   while (1)
   {
+
+	  if (HAL_GetTick() >= TimeStamp) {
+		  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, HAL_GPIO_CheckID(64340500062));
+		  TimeStamp += 20;
+	  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -197,7 +257,13 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LD2_Pin|R2_Pin|R3_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(R1_GPIO_Port, R1_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(R4_GPIO_Port, R4_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -212,9 +278,114 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : R1_Pin */
+  GPIO_InitStruct.Pin = R1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(R1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : R4_Pin */
+  GPIO_InitStruct.Pin = R4_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(R4_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : R2_Pin R3_Pin */
+  GPIO_InitStruct.Pin = R2_Pin|R3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : L1_Pin */
+  GPIO_InitStruct.Pin = L1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(L1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : L2_Pin L4_Pin L3_Pin */
+  GPIO_InitStruct.Pin = L2_Pin|L4_Pin|L3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
 }
 
 /* USER CODE BEGIN 4 */
+
+int8_t HAL_GPIO_ReadDigit() {
+	uint16_t Digit = 0;
+	static int x = 0;
+
+	register int y = 0;
+	for (y = 0; y < 4; y++) {
+		S[(4 * y) + x].Current = HAL_GPIO_ReadPin(L[y].Port, L[y].Pin);
+		if (!S[(4 * y) + x].Current && S[(4 * y) + x].Previous) {
+			Digit |= 1 << ((4 * y) + x);
+			S[(4 * y) + x].Previous = S[(4 * y) + x].Current;
+			break;
+		}
+		S[(4 * y) + x].Previous = S[(4 * y) + x].Current;
+	}
+	HAL_GPIO_WritePin(R[x].Port, R[x].Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(R[(x + 1) % 4].Port, R[(x + 1) % 4].Pin, GPIO_PIN_RESET);
+	x = (x + 1) % 4;
+
+	switch (Digit) {
+	case 0x0001: return 7;
+	case 0x0002: return 8;
+	case 0x0004: return 9;
+	case 0x0008: return -1; //CLEAR
+	case 0x0010: return 4;
+	case 0x0020: return 5;
+	case 0x0040: return 6;
+	case 0x0080: return -2; //BACKSPACE
+	case 0x0100: return 1;
+	case 0x0200: return 2;
+	case 0x0400: return 3;
+	case 0x1000: return 0;
+	case 0x8000: return -3; //OK
+	default: 	 return -4; //NONE
+	}
+
+}
+
+GPIO_PinState HAL_GPIO_CheckID(uint64_t CheckID) {
+	static int8_t ID_digit = -4;
+	static uint8_t count = 0;
+
+	if (ID_digit == -3) {
+		ID_digit = HAL_GPIO_ReadDigit();
+		if (ID_digit >= 0 || ID_digit == -4) ID_digit = -3;
+	} else {
+		ID_digit = HAL_GPIO_ReadDigit();
+		if (count > 11 && ID_digit >= 0) ID_digit = -4;
+	}
+
+	switch (ID_digit) {
+	case -1:
+		ID = 0;
+		count = 0;
+		break;
+	case -2:
+		ID /= 10;
+		count--;
+		break;
+	case -3:
+		if (ID == CheckID) return GPIO_PIN_SET;
+		break;
+	case -4:
+		break;
+	default :
+		ID = ID * 10 + ID_digit;
+		count++;
+		break;
+	}
+
+	return GPIO_PIN_RESET;
+}
 
 /* USER CODE END 4 */
 
