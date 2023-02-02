@@ -23,7 +23,6 @@
 /* USER CODE BEGIN Includes */
 #include "math.h"
 #include "string.h"
-#include "inttypes.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
