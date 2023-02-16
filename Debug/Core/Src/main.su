@@ -4,4 +4,4 @@
 ../Core/Src/main.c:248:13:MX_GPIO_Init	48	static
 ../Core/Src/main.c:317:8:HAL_GPIO_ReadDigit	24	static
 ../Core/Src/main.c:354:15:HAL_GPIO_CheckID	56	static
-../Core/Src/main.c:395:6:Error_Handler	4	static,ignoring_inline_asm
+../Core/Src/main.c:390:6:Error_Handler	4	static,ignoring_inline_asm

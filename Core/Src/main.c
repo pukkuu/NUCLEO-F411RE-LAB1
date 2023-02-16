@@ -353,24 +353,20 @@ int8_t HAL_GPIO_ReadDigit() {
 
 GPIO_PinState HAL_GPIO_CheckID(uint64_t CheckID) {
 	static int8_t ID_digit = -4;
-	static uint8_t count = 0;
 
 	if (ID_digit == -3) {
 		ID_digit = HAL_GPIO_ReadDigit();
-		if (ID_digit >= 0 || ID_digit == -4) ID_digit = -3;
+		if (ID_digit == -4) ID_digit = -3;
 	} else {
 		ID_digit = HAL_GPIO_ReadDigit();
-		if (count > 11 && ID_digit >= 0) ID_digit = -4;
 	}
 
 	switch (ID_digit) {
 	case -1:
 		ID = 0;
-		count = 0;
 		break;
 	case -2:
 		ID /= 10;
-		count--;
 		break;
 	case -3:
 		if (ID == CheckID) return GPIO_PIN_SET;
@@ -378,8 +374,7 @@ GPIO_PinState HAL_GPIO_CheckID(uint64_t CheckID) {
 	case -4:
 		break;
 	default :
-		ID = ID * 10 + ID_digit;
-		count++;
+		ID = (ID * 10 + ID_digit) % 100000000000;
 		break;
 	}
 
